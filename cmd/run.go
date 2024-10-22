@@ -58,8 +58,7 @@ var runCmd = &cobra.Command{
 		}
 
 		cfg, err := share.RawUserConfiguration{
-			ListenIP: shareListenIPFlag,
-
+			ListenIP:   shareListenIPFlag,
 			FTPExtIP:   ftpExtIPFlag,
 			SMBExtMode: smbUseExternAddrFlag,
 		}.Process(shareBackendFlag, slog.With("caller", "share-config"))
@@ -74,7 +73,7 @@ var runCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		os.Exit(runVM(args[0], func(ctx context.Context, i *vm.VM, fm *vm.FileManager, tapCtx *share.NetTapRuntimeContext) int {
+		exitCode := runVM(args[0], func(ctx context.Context, i *vm.VM, fm *vm.FileManager, tapCtx *share.NetTapRuntimeContext) int {
 			fsToLog := "<auto>"
 			if fsTypeOverride != "" {
 				fsToLog = fsTypeOverride
@@ -98,10 +97,13 @@ var runCmd = &cobra.Command{
 				return 1
 			}
 
-			sharePWD, err := password.Generate(16, 10, 0, false, false)
-			if err != nil {
-				slog.Error("Failed to generate ephemeral password for the network file share", "error", err.Error())
-				return 1
+			sharePWD := afpPasswordFlag
+			if sharePWD == "" {
+				sharePWD, err = password.Generate(16, 10, 0, false, false)
+				if err != nil {
+					slog.Error("Failed to generate ephemeral password for the network file share", "error", err.Error())
+					return 1
+				}
 			}
 
 			lg := slog.With("backend", shareBackendFlag)
@@ -137,7 +139,9 @@ var runCmd = &cobra.Command{
 			}
 
 			return 0
-		}, vmOpts.Ports, unrestrictedNetworkingFlag, vmOpts.EnableTap))
+		}, vmOpts.Ports, unrestrictedNetworkingFlag, vmOpts.EnableTap)
+
+		os.Exit(exitCode)
 	},
 }
 
