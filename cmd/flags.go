@@ -54,6 +54,7 @@ var (
 
 	// custom afp password
 	afpPasswordFlag string
+	automountFlag   bool
 )
 
 func initVMRuntimeFlags(flags *pflag.FlagSet) {
@@ -61,6 +62,8 @@ func initVMRuntimeFlags(flags *pflag.FlagSet) {
 	flags.BoolVarP(&vmRuntimeLUKSContainerEntireDriveFlag, "luks-container-entire-drive", "c", false, `Similar to --luks-container, but this assumes that the entire passed-through volume is a LUKS container (password will be prompted).`)
 	flags.BoolVar(&vmRuntimeInternalAllowLUKSLowMemoryFlag, "allow-luks-low-memory", false, "Allow VM memory allocation lower than 2048 MiB when LUKS is enabled.")
 	flags.StringVar(&afpPasswordFlag, "afp-password", "", "Specifies a static password for AFP sharing. If not provided, a dynamic password will be generated.")
+	flags.BoolVar(&automountFlag, "automount", false, "Enable automount of the AFP share. This is off by default.")
+
 }
 
 func configureVMRuntimeFlags() {
