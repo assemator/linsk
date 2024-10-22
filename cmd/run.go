@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/AlexSSD7/linsk/osspecifics"
@@ -121,6 +122,38 @@ var runCmd = &cobra.Command{
 			lg.Info("Started the network share successfully")
 
 			fmt.Fprintf(os.Stderr, "===========================\n[Network File Share Config]\nThe network file share was started. Please use the credentials below to connect to the file server.\n\nType: "+strings.ToUpper(shareBackendFlag)+"\nURL: %v\nUsername: linsk\nPassword: %v\n===========================\n", shareURI, sharePWD)
+
+			// Automount AFP share if the flag is set
+			if automountFlag && shareBackendFlag == "afp" {
+				user := os.Getenv("SUDO_USER")
+				if user == "" {
+					user = os.Getenv("USER")
+				}
+
+				// Create the mount directory with sudo
+				mkdirCmd := exec.Command("sudo", "mkdir", "-p", "/Volumes/LinskShare")
+				err := mkdirCmd.Run()
+				if err != nil {
+					slog.Error("Failed to create mount directory", "error", err.Error())
+					return 1
+				}
+
+				// Change ownership of the directory with sudo
+				chownCmd := exec.Command("sudo", "chown", fmt.Sprintf("%s:staff", user), "/Volumes/LinskShare")
+				err = chownCmd.Run()
+				if err != nil {
+					slog.Error("Failed to change ownership of mount directory", "error", err.Error())
+					return 1
+				}
+
+				// Mount the AFP share without sudo, explicitly as the user
+				mountCmd := exec.Command("sh", "-c", fmt.Sprintf("sudo -u %s mount -t afp afp://linsk:%s@127.0.0.1:9000/linsk /Volumes/LinskShare", user, sharePWD))
+				err = mountCmd.Run()
+				if err != nil {
+					slog.Error("Failed to mount AFP share", "error", err.Error())
+					return 1
+				}
+			}
 
 			ctxWait := true
 
